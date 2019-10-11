@@ -92,9 +92,12 @@ class Blockchain(object):
         zeroes
         :return: A valid proof for the provided block
         """
-        # TODO
-        pass
+        block_string = json.dumps(block, sort_keys=True)
+        proof = 0
+        while self.valid_proof(block_string, proof) is False:
+            proof += 1
         # return proof
+        return proof
 
     @staticmethod
     def valid_proof(block_string, proof):
@@ -108,6 +111,12 @@ class Blockchain(object):
         correct number of leading zeroes.
         :return: True if the resulting hash is a valid proof, False otherwise
         """
+        guess = f'{block_string}{proof}'.encode()
+        guess_hash = hashlib.sha256(guess).hexdigest()
+        if guess_hash[:6] == "000000":
+            return True
+        else:
+            return False
         # TODO
         pass
         # return True or False
@@ -130,13 +139,27 @@ class Blockchain(object):
             print(f'{block}')
             print("\n-------------------\n")
             # Check that the hash of the block is correct
+            #hash previous block and check thant the block.prev_hash matches it
             # TODO: Return false if hash isn't correct
+            if self.hash(prev_block) != block['previous_hash']:
+                return False
 
             # Check that the Proof of Work is correct
             # TODO: Return false if proof isn't correct
+            block_string  = json.dumps(prev_block, sort_keys=True)
+
+            if not self.valid_proof(block_string, block['proof']):
+                return False
 
             prev_block = block
             current_index += 1
+        # block = {
+        #     'index': len(self.chain) + 1,
+        #     'timestamp': time(),
+        #     'transactions': self.current_transactions,
+        #     'proof': proof,
+        #     'previous_hash': previous_hash or self.hash(self.chain[-1]),
+        # }
 
         return True
 
@@ -157,6 +180,7 @@ def mine():
     proof = blockchain.proof_of_work()
 
     # We must receive a reward for finding the proof.
+    blockchain.new_transaction(sender="0", recipient=node_identifier, amount=1)
     # TODO:
     # The sender is "0" to signify that this node has mine a new coin
     # The recipient is the current node, it did the mining!
@@ -164,6 +188,8 @@ def mine():
 
     # Forge the new Block by adding it to the chain
     # TODO
+    previous_hash = blockchain.hash(blockchain.last_block)
+    block = blockchain.new_block(proof, previous_hash)
 
     # Send a response with the new block
     response = {
@@ -198,6 +224,8 @@ def new_transaction():
 def full_chain():
     response = {
         # TODO: Return the chain and its current length
+        "chain": blockchain.chain,
+        "length": len(blockchain.chain),
     }
     return jsonify(response), 200
 
