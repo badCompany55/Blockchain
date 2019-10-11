@@ -13,8 +13,30 @@ import sys
 
 coins_mined = 0
 node_identifier = str(uuid4()).replace('-', '')
-get_u_r_l = "http://0.0.0.0:5000/last_block"
-post_u_r_l = "http://0.0.0.0:5000/mine"
+get_u_r_l = "/last_block"
+post_u_r_l = "/mine"
+node_u_r_l = "/nodes/register"
+data = {}
+data['id'] = node_identifier
+
+def test_for_file(file):
+    try:
+        f = open(file)
+        f.close()
+        return True
+    except FileNotFoundError:
+        return False
+
+
+if test_for_file("../my_data.txt") == True:
+    with open("../my_data.txt") as json_file:
+        data = json.load(json_file)
+        node_identifier = data['id']
+else:
+    with open("../my_data.txt", 'w') as output_file:
+        json.dump(data, output_file)
+
+
 
 def find_proof(block):
     block_string = json.dumps(block, sort_keys=True)
@@ -45,40 +67,31 @@ def valid_proof(block_string, proof):
     # TODO
     # return True or False
 
-while True:
-    r = requests.get(url = get_u_r_l)
-
-    print("Finding Proof")
-    proof = find_proof(r.json())
-    print("Found Proof")
-    print("Sending to Mine")
-    headers = {"Content-type": "application/json", "Accept": "text/plain"}
-    dat = {"proof": proof, "node_identifier": node_identifier}
-    rp = requests.post(url = post_u_r_l, data = json.dumps(dat), headers=headers)
-    if rp.status_code == 200:
-        coins_mined += 1
-        print(f'Coin Count = {coins_mined}')
-
-
-
-
-
-
-
 if __name__ == '__main__':
     # What node are we interacting with?
+    headers = {"Content-type": "application/json", "Accept": "text/plain"}
     if len(sys.argv) > 1:
-        node = sys.argv[1]
+        node = f'http://localhost:{sys.argv[1]}'
     else:
         node = "http://localhost:5000"
 
-    # Run forever until interrupted
-    # while True:
-    #     # TODO: Get the last proof from the server and look for a new one
-    #     # TODO: When found, POST it to the server {"proof": new_proof}
-    #     # TODO: We're going to have to research how to do a POST in Python
-    #     # HINT: Research `requests` and remember we're sending our data as JSON
-    #     # TODO: If the server responds with 'New Block Forged'
-    #     # add 1 to the number of coins mined and print it.  Otherwise,
-    #     # print the message from the server.
-    #     pass
+    if node == "http://localhost:5001":
+        other_node = "http://localhost:5000"
+    else:
+        other_node = "http://localhost:5001"
+
+    node_data = {"nodes": [other_node]}
+    rn = requests.post(url = node + node_u_r_l, data = json.dumps(node_data), headers=headers)
+
+    while True:
+        r = requests.get(url = node + get_u_r_l)
+
+        print("Finding Proof")
+        proof = find_proof(r.json())
+        print("Found Proof")
+        print("Sending to Mine")
+        dat = {"proof": proof, "node_identifier": node_identifier}
+        rp = requests.post(url = node + post_u_r_l, data = json.dumps(dat), headers=headers)
+        if rp.status_code == 200:
+            coins_mined += 1
+            print(f'Coin Count = {coins_mined}')
